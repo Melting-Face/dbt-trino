@@ -1,0 +1,63 @@
+---
+version: "3.7"
+services:
+  spark:
+    container_name: spark
+    build: spark
+    ports:
+      - "10000:10000"
+      - "4040:4040"
+    user: '0'
+    volumes:
+      - ./spark-warehouse:/opt/spark/work-dir/spark-warehouse
+    command:
+      - |
+        /opt/spark/bin/spark-shell \
+        --class org.apache.spark.sql.hive.thriftserver.HiveThriftServer2 \
+        --name "Thrift JDBC/ODBC Server"
+    entrypoint: ["bash", "-c"]
+    depends_on:
+      - metastore
+  db:
+    container_name: db
+    image: postgres:14
+    ports:
+      - "25432:5432"
+    volumes:
+      - ./metastore:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=dbt
+      - POSTGRES_PASSWORD=dbt
+      - POSTGRES_DB=metastore
+  minio:
+    container_name: minio
+    build: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./data:/data
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=admin1234
+  metastore:
+    container_name: metastore
+    build: hive
+    ports:
+      - "9083:9083"
+    environment:
+      - SERVICE_NAME=metastore
+      - DB_DRIVER=postgres
+    depends_on:
+      - db
+      - minio
+  trino:
+    container_name: trino
+    image: trinodb/trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./hive.properties:/etc/trino/catalog/hive.properties
+      - ./delta.properties:/etc/trino/catalog/delta.properties
+    depends_on:
+      - metastore

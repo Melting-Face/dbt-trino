@@ -1,0 +1,10 @@
+data/
+logs/
+node_modules/
+**/__pycache__/**
+**/*.log
+**/.DS_Store
+.trunk/
+.vscode/
+spark-warehouse/
+metastore/
